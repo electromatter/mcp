@@ -1,9 +1,7 @@
 json
 nbt
 metadata
-encryption - rsa, aes-cfb8
-sha1
+slots
 position
 uuid formating
-signed hex digest format
-rsa
+tests
