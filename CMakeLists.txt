@@ -1,10 +1,9 @@
-project(mcp_extra)
+project(mcp)
 cmake_minimum_required(VERSION 2.8)
 
-find_package(ZLIB REQUIRED)
-find_package(OpenSSL REQUIRED)
+enable_testing()
 
-set(CMAKE_C_FLAGS "-std=c99 -Wall -Wextra -pedantic")
+include_directories(mcp_base/ mcp_extra/)
 
-add_library(mcp_extra framers.c utils.c use_zlib.c use_openssl.c)
-add_dependencies(mcp_extra mcp_base)
+add_subdirectory(mcp_base/)
+add_subdirectory(mcp_extra/)
