@@ -7,3 +7,4 @@ include_directories(mcp_base/ mcp_extra/)
 
 add_subdirectory(mcp_base/)
 add_subdirectory(mcp_extra/)
+add_subdirectory(mcp_modern/)

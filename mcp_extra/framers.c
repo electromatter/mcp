@@ -1,6 +1,6 @@
 /* mcp_extra/framers.c
  *
- * Copyright (c) 2015 Eric Chai <electromatter@gmail.com>
+ * Copyright (c) 2016 Eric Chai <electromatter@gmail.com>
  * All rights reserved.
  *
  * This software may be modified and distributed under the terms
