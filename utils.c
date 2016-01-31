@@ -8,6 +8,7 @@
  */
 
 #include "utils.h"
+#include "stubs.h"
 
 void mcp_hexdigest(char *hex, const unsigned char *digest, int digest_length)
 {
@@ -46,4 +47,11 @@ void mcp_hexdigest(char *hex, const unsigned char *digest, int digest_length)
 		*hex = *ptr;
 		*ptr = x;
 	} while (++hex < --ptr);
+}
+
+void mcp_sha1_hexdigest(char hex[42], const void *data, size_t size)
+{
+	unsigned char digest[20];
+	mcp_sha1(digest, data, size);
+	mcp_hexdigest(hex, digest, sizeof(digest));
 }

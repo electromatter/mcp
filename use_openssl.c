@@ -10,6 +10,7 @@
 #include "stubs.h"
 
 #include "fbuf.h"
+#include "mcp_internal.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -21,6 +22,7 @@
 #include <openssl/sha.h>
 #include <openssl/rand.h>
 #include <openssl/x509.h>
+#include <openssl/pem.h>
 
 struct mcp_cipher {
 	EVP_CIPHER_CTX en_ctx, de_ctx;
@@ -130,44 +132,122 @@ void mcp_free_rsa(struct mcp_rsa *rsa)
 	RSA_free((void*)rsa);
 }
 
-struct mcp_rsa *mcp_rsa_import(void *key, size_t size)
+struct mcp_rsa *mcp_rsa_import(struct mcp_parse *buf, int is_private)
 {
-	/* FIXME */
+	struct mcp_rsa *ret;
+	const unsigned char *src;
+	
+	if (mcp_error(buf) != MCP_EOK)
+		return NULL;
+	
+	/* Try private */
+	src = mcp_ptr(buf);
+	ret = (void*)d2i_RSAPrivateKey(NULL, &src, mcp_avail(buf));
+	if (ret != NULL)
+		return ret;
+	
+	if (is_private) {
+		buf->error = MCP_EINVAL;
+		return NULL;
+	}
+	
+	/* Try public */
+	src = mcp_ptr(buf);
+	ret = (void*)d2i_RSA_PUBKEY(NULL, &src, mcp_avail(buf));
+	if (ret != NULL)
+		return ret;
+	
+	buf->error = MCP_EINVAL;
+	return NULL;
 }
 
-mcp_error_t mcp_rsa_export(struct fbuf *dest, struct mcp_rsa *rsa, int format)
+mcp_error_t mcg_rsa_private(struct fbuf *dest, struct mcp_rsa *rsa)
 {
-	/* FIXME */
-}
-
-mcp_error_t mcp_rsa_pubkey(struct fbuf *dest, struct mcp_rsa *rsa)
-{
-	/* FIXME */
-/*	int len = i2d_RSA_PUBKEY((void*)rsa, NULL);
 	unsigned char *ptr;
-	assert(len > 0);
+	int len = i2d_RSAPrivateKey((void*)rsa, NULL);
+	
+	if (len < 0)
+		return MCP_EINVAL;
+	
 	ptr = fbuf_wptr(dest, len);
-	assert(i2d_RSA_PUBKEY((void*)rsa, &ptr) == len);
+	if (ptr == NULL)
+		return MCP_ENOMEM;
+	
+	assert(i2d_RSAPrivateKey((void*)rsa, &ptr) == len);
+	assert(ptr - fbuf_wptr(dest, 0) == len);
+	
 	fbuf_produce(dest, len);
-	return MCP_EOK;*/
+	return MCP_EOK;
 }
 
-int mcp_rsa_size(struct mcp_rsa *rsa)
+mcp_error_t mcg_rsa_pubkey(struct fbuf *dest, struct mcp_rsa *rsa)
 {
-	return RSA_size((void*)rsa);
+	unsigned char *ptr;
+	int len = i2d_RSA_PUBKEY((void*)rsa, NULL);
+	
+	if (len < 0)
+		return MCP_EINVAL;
+	
+	ptr = fbuf_wptr(dest, len);
+	if (ptr == NULL)
+		return MCP_ENOMEM;
+	
+	assert(i2d_RSA_PUBKEY((void*)rsa, &ptr) == len);
+	assert(ptr - fbuf_wptr(dest, 0) == len);
+	
+	fbuf_produce(dest, len);
+	return MCP_EOK;
+}
+
+size_t mcp_rsa_size(struct mcp_rsa *rsa)
+{
+	int ret = RSA_size((void*)rsa);
+	assert(ret > 0);
+	return ret;
 }
 
 mcp_error_t mcp_rsa_encrypt(struct mcp_rsa *rsa, struct fbuf *dest, const void *src, size_t src_sz)
 {
-	/*FIXME*/
+	size_t sz = mcp_rsa_size(rsa);
+	unsigned char *ptr = fbuf_wptr(dest, sz);
+	
+	if (ptr == NULL)
+		return MCP_ENOMEM;
+	
+	if (src_sz > sz)
+		return MCP_EINVAL;
+	
+	if (RSA_public_encrypt(src_sz, src, ptr, (void*)rsa, RSA_PKCS1_PADDING) != (int)sz)
+		return MCP_EINVAL;
+	
+	fbuf_produce(dest, sz);
+	
+	return MCP_EOK;
 }
 
 mcp_error_t mcp_rsa_decrypt(struct mcp_rsa *rsa, struct fbuf *dest, const void *src, size_t src_sz)
 {
-	/*FIXME*/
+	int ret;
+	size_t sz = mcp_rsa_size(rsa);
+	unsigned char *ptr = fbuf_wptr(dest, sz);
+	
+	if (ptr == NULL)
+		return MCP_ENOMEM;
+	
+	if (src_sz != sz)
+		return MCP_EINVAL;
+	
+	ret = RSA_private_decrypt(src_sz, src, ptr, (void*)rsa, RSA_PKCS1_PADDING);
+	
+	if (ret < 0)
+		return MCP_EINVAL;
+	
+	fbuf_produce(dest, ret);
+	
+	return MCP_EOK;
 }
 
-void mcp_sha1(unsigned char digest[20], void *data, size_t size)
+void mcp_sha1(unsigned char digest[20], const void *data, size_t size)
 {
 	SHA1(data, size, digest);
 }

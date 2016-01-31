@@ -38,17 +38,17 @@ struct mcp_rsa;
 struct mcp_rsa *mcp_gen_key(int bits, int e);
 void mcp_free_rsa(struct mcp_rsa *rsa);
 
-struct mcp_rsa *mcp_rsa_import(void *key, size_t size);
-mcp_error_t mcp_rsa_export(struct fbuf *dest, struct mcp_rsa *rsa, int format);
-mcp_error_t mcp_rsa_pubkey(struct fbuf *dest, struct mcp_rsa *rsa);
+struct mcp_rsa *mcp_rsa_import(struct mcp_parse *buf, int is_private);
+mcp_error_t mcg_rsa_private(struct fbuf *dest, struct mcp_rsa *rsa);
+mcp_error_t mcg_rsa_pubkey(struct fbuf *dest, struct mcp_rsa *rsa);
 
-int mcp_rsa_size(struct mcp_rsa *rsa);
+size_t mcp_rsa_size(struct mcp_rsa *rsa);
 
 mcp_error_t mcp_rsa_encrypt(struct mcp_rsa *rsa, struct fbuf *dest, const void *src, size_t src_sz);
 mcp_error_t mcp_rsa_decrypt(struct mcp_rsa *rsa, struct fbuf *dest, const void *src, size_t src_sz);
 
 /* SHA-1 */
-void mcp_sha1(unsigned char digest[20], void *data, size_t size);
+void mcp_sha1(unsigned char digest[20], const void *data, size_t size);
 
 /* CSPRNG */
 void mcp_secure_random(void *dest, size_t size);
