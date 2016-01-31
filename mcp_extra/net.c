@@ -91,8 +91,12 @@ mcp_error_t mcp_parse_ip(const char *name, int default_port, struct sockaddr *ad
 		return 0;
 	}
 	
-	for (i = 0; *name && *name != ':'; name++)
+	for (i = 0; *name && *name != ':' && i < sizeof(ip); name++)
 		ip[i++] = *name;
+	
+	if (i >= sizeof(ip))
+		return -1;
+	
 	ip[i++] = 0;
 	
 	if (*name == ':')
