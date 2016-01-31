@@ -32,7 +32,7 @@ mcp_error_t mcp_format_addr(char *dest, size_t dest_size, struct sockaddr *addr,
 	{
 		struct sockaddr_in *sin = (void*)addr;
 		char ip[32];
-		int port;
+		int port, ret;
 		
 		if (sock_len < sizeof(*sin))
 			return MCP_EINVAL;
@@ -42,7 +42,11 @@ mcp_error_t mcp_format_addr(char *dest, size_t dest_size, struct sockaddr *addr,
 		
 		port = ntohs(sin->sin_port);
 		
-		if (snprintf(dest, dest_size, "%s:%i", ip, port) > dest_size)
+		ret = snprintf(dest, dest_size, "%s:%i", ip, port);
+		if (ret < 0)
+			return MCP_EINVAL;
+		
+		if ((size_t)ret > dest_size)
 			return MCP_EOVERFLOW;
 		
 		break;
@@ -50,7 +54,7 @@ mcp_error_t mcp_format_addr(char *dest, size_t dest_size, struct sockaddr *addr,
 	case AF_UNIX:
 	{
 		struct sockaddr_un *sin = (void*)addr;
-		int len;
+		socklen_t len;
 		
 		if (sock_len < offsetof(struct sockaddr_un, sun_path))
 			return MCP_EINVAL;
@@ -77,7 +81,7 @@ mcp_error_t mcp_parse_ip(const char *name, int default_port, struct sockaddr *ad
 {
 	char ip[32] = "";
 	char *end;
-	int i;
+	size_t i;
 	long port;
 	struct sockaddr_in *sin = (void*)addr;
 	
@@ -136,7 +140,7 @@ int mcp_listen(const char *addr, int default_port)
 	int fd;
 	const int one = 1;
 	
-	if (mcp_parse_addr(addr, default_port, &saddr, &len) < 0)
+	if (mcp_parse_ip(addr, default_port, &saddr, &len) < 0)
 		return -1;
 	
 	fd = socket(saddr.sa_family, SOCK_STREAM | SOCK_NONBLOCK, 0);
@@ -168,7 +172,7 @@ int mcp_connect(const char *addr, int default_port)
 	socklen_t len = sizeof(saddr);
 	int fd;
 	
-	if (mcp_parse_addr(addr, default_port, &saddr, &len) < 0)
+	if (mcp_parse_ip(addr, default_port, &saddr, &len) < 0)
 		return -1;
 	
 	fd = socket(saddr.sa_family, SOCK_STREAM | SOCK_NONBLOCK, 0);
