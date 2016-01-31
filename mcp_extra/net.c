@@ -73,7 +73,7 @@ mcp_error_t mcp_format_addr(char *dest, size_t dest_size, struct sockaddr *addr,
 	return MCP_EOK;
 }
 
-mcp_error_t mcp_parse_addr(const char *name, int default_port, struct sockaddr *addr, socklen_t *len)
+mcp_error_t mcp_parse_ip(const char *name, int default_port, struct sockaddr *addr, socklen_t *len)
 {
 	char ip[32] = "";
 	char *end;
