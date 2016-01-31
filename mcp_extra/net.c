@@ -7,6 +7,7 @@
  * of the ISC license. See the LICENSE file for details.
  */
 
+#include <stddef.h>
 #define _GNU_SOURCE
 #include <assert.h>
 #include <ctype.h>
@@ -15,6 +16,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/errno.h>
+#include <sys/un.h>
 #include <unistd.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -23,26 +25,55 @@
 
 #include "net.h"
 
-int mcp_format_addr(char *dest, struct sockaddr *addr, socklen_t len)
+mcp_error_t mcp_format_addr(char *dest, size_t dest_size, struct sockaddr *addr, socklen_t sock_len)
 {
-	char ip[32];
-	struct sockaddr_in *sin = (void*)addr;
+	switch (addr->sa_family) {
+	case AF_INET:
+	{
+		struct sockaddr_in *sin = (void*)addr;
+		char ip[32];
+		int port;
+		
+		if (sock_len < sizeof(*sin))
+			return MCP_EINVAL;
+		
+		if (!inet_ntop(sin->sin_family, &sin->sin_addr, ip, sizeof(ip)))
+			return MCP_EINVAL;
+		
+		port = ntohs(sin->sin_port);
+		
+		if (snprintf(dest, dest_size, "%s:%i", ip, port) > dest_size)
+			return MCP_EOVERFLOW;
+		
+		break;
+	}
+	case AF_UNIX:
+	{
+		struct sockaddr_un *sin = (void*)addr;
+		int len;
+		
+		if (sock_len < offsetof(struct sockaddr_un, sun_path))
+			return MCP_EINVAL;
+		
+		sock_len -= offsetof(struct sockaddr_un, sun_path);
+		
+		for (len = 0; len < sock_len && sin->sun_path[len] != 0; len++);
+		
+		if (len >= sock_len)
+			return MCP_EINVAL;
+		
+		strcpy(dest, sin->sun_path);
+		
+		break;
+	}
+	default:
+		return MCP_EINVAL;
+	}
 	
-	if (len < sizeof(*sin))
-		return -1;
-	
-	if (sin->sin_family != AF_INET)
-		return -1;
-	
-	if (!inet_ntop(sin->sin_family, &sin->sin_addr, ip, sizeof(ip)))
-		return -1;
-	
-	sprintf(dest, "%s:%i", ip, ntohs(sin->sin_port));
-	
-	return 0;
+	return MCP_EOK;
 }
 
-int mcp_parse_addr(const char *name, int default_port, struct sockaddr *addr, socklen_t *len)
+mcp_error_t mcp_parse_addr(const char *name, int default_port, struct sockaddr *addr, socklen_t *len)
 {
 	char ip[32] = "";
 	char *end;
@@ -104,7 +135,7 @@ int mcp_listen(const char *addr, int default_port)
 	if (mcp_parse_addr(addr, default_port, &saddr, &len) < 0)
 		return -1;
 	
-	fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+	fd = socket(saddr.sa_family, SOCK_STREAM | SOCK_NONBLOCK, 0);
 	if (fd < 0)
 		return -1;
 	
@@ -113,7 +144,7 @@ int mcp_listen(const char *addr, int default_port)
 		return -1;
 	}
 	
-	if (bind(fd, (void*)&saddr, sizeof(saddr)) < 0) {
+	if (bind(fd, (void*)&saddr, len) < 0) {
 		close(fd);
 		return -1;
 	}
@@ -145,9 +176,11 @@ int mcp_connect(const char *addr, int default_port)
 		return -1;
 	}
 	
-	if (setsockopt(fd, SOL_TCP, TCP_NODELAY, &one, sizeof(one)) < 0) {
-		close(fd);
-		return -1;
+	if (saddr.sa_family != AF_UNIX) {
+		if (setsockopt(fd, SOL_TCP, TCP_NODELAY, &one, sizeof(one)) < 0) {
+			close(fd);
+			return -1;
+		}
 	}
 	
 	return fd;
@@ -169,9 +202,11 @@ int mcp_accept(int from_fd, struct sockaddr *addr, socklen_t *len)
 	if (fd < 0)
 		return -1;
 	
-	if (setsockopt(fd, SOL_TCP, TCP_NODELAY, &one, sizeof(one)) < 0) {
-		close(fd);
-		return -1;
+	if (addr->sa_family != AF_UNIX) {
+		if (setsockopt(fd, SOL_TCP, TCP_NODELAY, &one, sizeof(one)) < 0) {
+			close(fd);
+			return -1;
+		}
 	}
 	
 	return fd;

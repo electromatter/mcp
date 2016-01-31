@@ -14,9 +14,10 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include "fbuf.h"
+#include "mcp.h"
 
-int mcp_format_addr(char *dest, struct sockaddr *addr, socklen_t len);
-int mcp_parse_addr(const char *name, int default_port, struct sockaddr *addr, socklen_t *len);
+mcp_error_t mcp_format_addr(char *dest, size_t dest_size, struct sockaddr *addr, socklen_t sock_len);
+mcp_error_t mcp_parse_addr(const char *name, int default_port, struct sockaddr *addr, socklen_t *len);
 int mcp_listen(const char *addr, int default_port);
 int mcp_connect(const char *addr, int default_port);
 int mcp_accept(int from_fd, struct sockaddr *addr, socklen_t *len);
