@@ -46,11 +46,11 @@ const void *mcp_simple_frame(struct mcp_parse *src, uint32_t *id,
 }
 
 static size_t size_varlong(uint64_t value) {
-	size_t size = 1;
-	while (value > 0) {
+	size_t size = 0;
+	do {
 		size++;
 		value >>= 7;
-	}
+	} while (value > 0);
 	return size;
 }
 
@@ -60,7 +60,7 @@ int mcg_simple_frame(struct fbuf *dest, uint32_t id,
 	int err = 0;
 	size_t id_length = size_varlong(id);
 	
-	if (data_length < MCP_MAX_FRAME - id_length)
+	if (data_length > MCP_MAX_FRAME - id_length)
 		return 1;
 	
 	err |= mcg_varlong(dest, data_length + id_length);
@@ -127,7 +127,7 @@ int mcg_compressed_frame(struct fbuf *dest, uint32_t id,
 			data_size = id_size + data_length,
 			frame_size;
 	if (data_size < threshold) {
-		if (data_length < MCP_MAX_FRAME - id_size - 1)
+		if (data_length > MCP_MAX_FRAME - id_size - 1)
 			return 1;
 		/* no compression */
 		err |= mcg_varlong(dest, data_size + 1);
