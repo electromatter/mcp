@@ -52,6 +52,8 @@ struct mcp_cipher *mcp_new_cipher(const unsigned char key[CIPHER_KEY_SIZE],
 
 void mcp_free_cipher(struct mcp_cipher *c)
 {
+	if (c == NULL)
+		return;
 	EVP_CIPHER_CTX_cleanup(&c->en_ctx);
 	EVP_CIPHER_CTX_cleanup(&c->de_ctx);
 	memset(c, 0, sizeof(*c));

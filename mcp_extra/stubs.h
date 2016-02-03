@@ -29,6 +29,7 @@ void mcp_free_cipher(struct mcp_cipher *c);
 void mcp_cipher_secret(struct mcp_cipher *c, unsigned char key[CIPHER_KEY_SIZE],
 		unsigned char en_iv[CIPHER_KEY_SIZE], unsigned char de_iv[CIPHER_KEY_SIZE]);
 
+/* in and out may be the same pointer, or non overlapping distinct pointers */
 void mcp_encrypt(struct mcp_cipher *c, void *out, void *in, size_t size);
 void mcp_decrypt(struct mcp_cipher *c, void *out, void *in, size_t size);
 
